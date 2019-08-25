@@ -32,7 +32,7 @@ const (
 
 var (
 	db            *sqlx.DB
-	client        *redis.Client
+	//client        *redis.Client
 	ErrBadReqeust = echo.NewHTTPError(http.StatusBadRequest)
 )
 
