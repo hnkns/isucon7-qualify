@@ -16,9 +16,17 @@ $ python3 bench.py 10
 args = sys.argv
 loop = int(args[1])
 
+
 scores = []
 for i in range(loop):
     print("ベンチマーク中　", i+1, " / ", loop)
+    print("redis restarting...")
+    subprocess.call("sudo systemctl restart redis-server", shell=True)
+    print("redis restart OK!")
+    print("MySQL initializing...")
+    subprocess.call("sudo bash ../db/init.sh", shell=True)
+    subprocess.call("zcat isucon7q-initial-dataset.sql.gz | sudo mysql isubata", shell=True)
+    print("MySQL initialize OK!")
     res = subprocess.call("bin/bench -remotes=127.0.0.1 -output result.json", shell=True)
     f = open("result.json", "r")
     score = json.load(f)["score"]
