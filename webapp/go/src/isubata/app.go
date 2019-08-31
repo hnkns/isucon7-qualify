@@ -114,6 +114,7 @@ type User struct {
 	CreatedAt   time.Time `json:"-" db:"created_at"`
 }
 
+/**
 func getUser(userID int64) (*User, error) {
 	u := User{}
 	// val = redisGet(client, "User", userID)
@@ -130,6 +131,18 @@ func getUser(userID int64) (*User, error) {
 		//redisSet(client, "User", userID, &u)
 	}
 
+	return &u, nil
+}
+ */
+
+func getUser(userID int64) (*User, error) {
+	u := User{}
+	if err := db.Get(&u, "SELECT * FROM user WHERE id = ?", userID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
 	return &u, nil
 }
 
