@@ -84,15 +84,15 @@ func init() {
 	db.SetConnMaxLifetime(5 * time.Minute)
 	log.Printf("Succeeded to connect db.")
 
-	//Redisの環境設定
-	redis_host := os.Getenv("ISUBATA_REDIS_HOST")
-	if redis_host == "" {
-		db_host = "127.0.0.1"
-	}
-	redis_port := os.Getenv("ISUBATA_REDIS_PORT")
-	if redis_host == "" {
-		db_host = "6379"
-	}
+	////Redisの環境設定
+	//redis_host := os.Getenv("ISUBATA_REDIS_HOST")
+	//if redis_host == "" {
+	//	db_host = "127.0.0.1"
+	//}
+	//redis_port := os.Getenv("ISUBATA_REDIS_PORT")
+	//if redis_host == "" {
+	//	db_host = "6379"
+	//}
 
 	// redis_addr = fmt.Sprintf("%s:%s", redis_host, redis_port)
 	// client = redis.NewClient(&redis.Options{
@@ -114,6 +114,7 @@ type User struct {
 	CreatedAt   time.Time `json:"-" db:"created_at"`
 }
 
+/**
 func getUser(userID int64) (*User, error) {
 	u := User{}
 	// val = redisGet(client, "User", userID)
@@ -130,6 +131,18 @@ func getUser(userID int64) (*User, error) {
 		//redisSet(client, "User", userID, &u)
 	}
 
+	return &u, nil
+}
+ */
+
+func getUser(userID int64) (*User, error) {
+	u := User{}
+	if err := db.Get(&u, "SELECT * FROM user WHERE id = ?", userID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
 	return &u, nil
 }
 
@@ -237,6 +250,14 @@ func getInitialize(c echo.Context) error {
 	db.MustExec("DELETE FROM channel WHERE id > 10")
 	db.MustExec("DELETE FROM message WHERE id > 10000")
 	db.MustExec("DELETE FROM haveread")
+
+	// index
+	db.MustExec("CREATE INDEX user_index ON user(id, name))")
+	db.MustExec("CREATE INDEX image_index ON image(name))")
+	db.MustExec("CREATE INDEX channel_index ON image(id))")
+	db.MustExec("CREATE INDEX message_index ON image(channel_id))")
+	db.MustExec("CREATE INDEX haveread_index ON image(user_id, channel_id))")
+
 	return c.String(204, "")
 }
 
