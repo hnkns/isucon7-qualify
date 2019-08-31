@@ -573,7 +573,7 @@ func getProfile(c echo.Context) error {
 	}
 
 	channels := []ChannelInfo{}
-	if redisGet("Channels", "0", &channels) {
+	if redisGet("Channels", "0", &channels) == false {
 		err = db.Select(&channels, "SELECT * FROM channel ORDER BY id")
 		if err != nil {
 			return err
@@ -607,7 +607,7 @@ func getAddChannel(c echo.Context) error {
 	}
 
 	channels := []ChannelInfo{}
-	if redisGet("Channels", "0", &channels) {
+	if redisGet("Channels", "0", &channels) == false {
 		err = db.Select(&channels, "SELECT * FROM channel ORDER BY id")
 		if err != nil {
 			return err
