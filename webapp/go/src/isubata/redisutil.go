@@ -19,14 +19,11 @@ func redisSet(tag string, id string, object interface{}) bool {
 	defer c.Close()
 
 	switch objectFormat := object.(type) {
-	case *[]ChannelInfo:
+	case *[]ChannelInfo, *[]Message:
 		key := fmt.Sprintf("%s:%s", tag, id)
 		serialized, _ := json.Marshal(objectFormat)
-		val, err := c.Do("Set", key, serialized, "NX", "EX", "3600")
-		if val == nil {
-			log.Printf("redisSet:This object exist already")
-			return false
-		} else if err != nil {
+		_, err := c.Do("Set", key, serialized, "NX", "EX", "3600")
+		if err != nil {
 			log.Printf("redisSet:Error :", err)
 			return false
 		} else {
@@ -59,7 +56,7 @@ func redisGet(tag string, id string, object interface{}) bool {
 
 	if val != nil {
 		switch objectFormat := object.(type) {
-		case *[]ChannelInfo:
+		case *[]ChannelInfo, *[]Message:
 			err := json.Unmarshal(val, objectFormat)
 			if err != nil {
 				log.Printf("redisGet:Assertion Error :", err)
