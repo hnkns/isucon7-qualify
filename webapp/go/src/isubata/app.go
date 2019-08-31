@@ -84,15 +84,15 @@ func init() {
 	db.SetConnMaxLifetime(5 * time.Minute)
 	log.Printf("Succeeded to connect db.")
 
-	//Redisの環境設定
-	redis_host := os.Getenv("ISUBATA_REDIS_HOST")
-	if redis_host == "" {
-		db_host = "127.0.0.1"
-	}
-	redis_port := os.Getenv("ISUBATA_REDIS_PORT")
-	if redis_host == "" {
-		db_host = "6379"
-	}
+	////Redisの環境設定
+	//redis_host := os.Getenv("ISUBATA_REDIS_HOST")
+	//if redis_host == "" {
+	//	db_host = "127.0.0.1"
+	//}
+	//redis_port := os.Getenv("ISUBATA_REDIS_PORT")
+	//if redis_host == "" {
+	//	db_host = "6379"
+	//}
 
 	// redis_addr = fmt.Sprintf("%s:%s", redis_host, redis_port)
 	// client = redis.NewClient(&redis.Options{
