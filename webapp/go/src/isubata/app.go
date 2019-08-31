@@ -216,6 +216,16 @@ func getInitialize(c echo.Context) error {
 	db.MustExec("DELETE FROM message WHERE id > 10000")
 	db.MustExec("DELETE FROM haveread")
 	redisFLUSHALL()
+
+	// index
+	db.MustExec("CREATE INDEX user_index ON user(id, name))")
+	db.MustExec("CREATE INDEX image_index ON image(name))")
+	db.MustExec("CREATE INDEX channel_index ON image(id))")
+	db.MustExec("CREATE INDEX message_index ON image(channel_id))")
+	db.MustExec("CREATE INDEX haveread_index ON image(user_id, channel_id))")
+
+	outputImages()
+
 	return c.String(204, "")
 }
 
@@ -687,8 +697,11 @@ func postProfile(c echo.Context) error {
 		avatarName = fmt.Sprintf("%x%s", sha1.Sum(avatarData), ext)
 	}
 
+
+
 	if avatarName != "" && len(avatarData) > 0 {
-		_, err := db.Exec("INSERT INTO image (name, data) VALUES (?, ?)", avatarName, avatarData)
+		_, err := db.Exec("INSERT INTO image (name) VALUES (?)", avatarName)
+		outputImage(avatarName, avatarData)
 		if err != nil {
 			return err
 		}
@@ -709,17 +722,9 @@ func postProfile(c echo.Context) error {
 }
 
 func getIcon(c echo.Context) error {
-	var name string
-	var data []byte
-	err := db.QueryRow("SELECT name, data FROM image WHERE name = ?",
-		c.Param("file_name")).Scan(&name, &data)
-	if err == sql.ErrNoRows {
-		return echo.ErrNotFound
-	}
-	if err != nil {
-		return err
-	}
 
+	name := c.Param("filename")
+	data := getImageBlob(name)
 	mime := ""
 	switch true {
 	case strings.HasSuffix(name, ".jpg"), strings.HasSuffix(name, ".jpeg"):
@@ -746,6 +751,30 @@ func tRange(a, b int64) []int64 {
 	return r
 }
 
+func getImageBlob(name string) []byte {
+	file, _ := os.Open("image/" + name)
+	defer file.Close()
+	b, _ := ioutil.ReadAll(file)
+	return b
+}
+
+func outputImages() {
+	rows, _ := db.Queryx("SELECT name, data FROM image")
+	for rows.Next() {
+		var name string
+		var data []byte
+		rows.Scan(&name, &data)
+		outputImage(name, data)
+	}
+}
+
+func outputImage(name string, data []byte) {
+	file, _ := os.Create("image/" + name)
+	defer file.Close()
+	file.Write(data)
+	fmt.Println("saved " + name)
+}
+
 func main() {
 	e := echo.New()
 	e.HideBanner = true
@@ -763,6 +792,8 @@ func main() {
 		Output: file,
 	}))
 	e.Use(middleware.Static("../public"))
+
+	outputImages()
 
 	e.GET("/initialize", getInitialize)
 	e.GET("/", getIndex)
