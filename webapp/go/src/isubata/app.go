@@ -225,9 +225,7 @@ func getInitialize(c echo.Context) error {
 	db.MustExec("DELETE FROM channel WHERE id > 10")
 	db.MustExec("DELETE FROM message WHERE id > 10000")
 	db.MustExec("DELETE FROM haveread")
-<<<<<<< HEAD
 	redisFLUSHALL()
-=======
 
 	// index
 	db.MustExec("CREATE INDEX user_index ON user(id, name))")
@@ -236,7 +234,6 @@ func getInitialize(c echo.Context) error {
 	db.MustExec("CREATE INDEX message_index ON image(channel_id))")
 	db.MustExec("CREATE INDEX haveread_index ON image(user_id, channel_id))")
 
->>>>>>> master
 	return c.String(204, "")
 }
 
