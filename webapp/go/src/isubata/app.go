@@ -81,6 +81,7 @@ func init() {
 	db.SetMaxOpenConns(20)
 	db.SetConnMaxLifetime(5 * time.Minute)
 	log.Printf("Succeeded to connect db.")
+
 }
 
 type User struct {
@@ -93,6 +94,7 @@ type User struct {
 	CreatedAt   time.Time `json:"-" db:"created_at"`
 }
 
+/**
 func getUser(userID int64) (*User, error) {
 
 	u := User{}
@@ -104,6 +106,18 @@ func getUser(userID int64) (*User, error) {
 		return nil, err
 	}
 
+	return &u, nil
+}
+ */
+
+func getUser(userID int64) (*User, error) {
+	u := User{}
+	if err := db.Get(&u, "SELECT * FROM user WHERE id = ?", userID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
 	return &u, nil
 }
 
@@ -211,7 +225,18 @@ func getInitialize(c echo.Context) error {
 	db.MustExec("DELETE FROM channel WHERE id > 10")
 	db.MustExec("DELETE FROM message WHERE id > 10000")
 	db.MustExec("DELETE FROM haveread")
+<<<<<<< HEAD
 	redisFLUSHALL()
+=======
+
+	// index
+	db.MustExec("CREATE INDEX user_index ON user(id, name))")
+	db.MustExec("CREATE INDEX image_index ON image(name))")
+	db.MustExec("CREATE INDEX channel_index ON image(id))")
+	db.MustExec("CREATE INDEX message_index ON image(channel_id))")
+	db.MustExec("CREATE INDEX haveread_index ON image(user_id, channel_id))")
+
+>>>>>>> master
 	return c.String(204, "")
 }
 
