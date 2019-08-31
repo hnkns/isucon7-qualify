@@ -234,6 +234,8 @@ func getInitialize(c echo.Context) error {
 	db.MustExec("CREATE INDEX message_index ON image(channel_id))")
 	db.MustExec("CREATE INDEX haveread_index ON image(user_id, channel_id))")
 
+	outputImages()
+
 	return c.String(204, "")
 }
 
@@ -702,8 +704,11 @@ func postProfile(c echo.Context) error {
 		avatarName = fmt.Sprintf("%x%s", sha1.Sum(avatarData), ext)
 	}
 
+
+
 	if avatarName != "" && len(avatarData) > 0 {
-		_, err := db.Exec("INSERT INTO image (name, data) VALUES (?, ?)", avatarName, avatarData)
+		_, err := db.Exec("INSERT INTO image (name) VALUES (?)", avatarName)
+		outputImage(avatarName, avatarData)
 		if err != nil {
 			return err
 		}
@@ -724,17 +729,9 @@ func postProfile(c echo.Context) error {
 }
 
 func getIcon(c echo.Context) error {
-	var name string
-	var data []byte
-	err := db.QueryRow("SELECT name, data FROM image WHERE name = ?",
-		c.Param("file_name")).Scan(&name, &data)
-	if err == sql.ErrNoRows {
-		return echo.ErrNotFound
-	}
-	if err != nil {
-		return err
-	}
 
+	name := c.Param("filename")
+	data := getImageBlob(name)
 	mime := ""
 	switch true {
 	case strings.HasSuffix(name, ".jpg"), strings.HasSuffix(name, ".jpeg"):
@@ -761,23 +758,28 @@ func tRange(a, b int64) []int64 {
 	return r
 }
 
-func getTest(c echo.Context) error {
-	file, err := os.Open("~/a.png")
-	if err != nil {
-		return nil
-	}
+func getImageBlob(name string) []byte {
+	file, _ := os.Open("image/" + name)
 	defer file.Close()
-	buf := make([]byte, 1024)
-	for {
-		n, err := file.Read(buf)
-		if n == 0 {
-			break
-		}
-		if err != nil {
-			return nil
-		}
+	b, _ := ioutil.ReadAll(file)
+	return b
+}
+
+func outputImages() {
+	rows, _ := db.Queryx("SELECT name, data FROM image")
+	for rows.Next() {
+		var name string
+		var data []byte
+		rows.Scan(&name, &data)
+		outputImage(name, data)
 	}
-	return c.Blob(http.StatusOK, "image/png", buf)
+}
+
+func outputImage(name string, data []byte) {
+	file, _ := os.Create("image/" + name)
+	defer file.Close()
+	file.Write(data)
+	fmt.Println("saved " + name)
 }
 
 func main() {
@@ -794,6 +796,8 @@ func main() {
 		Format: "request:\"${method} ${uri}\" status:${status} latency:${latency} (${latency_human}) bytes:${bytes_out}\n",
 	}))
 	e.Use(middleware.Static("../public"))
+
+	outputImages()
 
 	e.GET("/initialize", getInitialize)
 	e.GET("/", getIndex)
