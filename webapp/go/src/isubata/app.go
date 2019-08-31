@@ -748,6 +748,7 @@ func tRange(a, b int64) []int64 {
 
 func main() {
 	e := echo.New()
+	e.HideBanner = true
 	funcs := template.FuncMap{
 		"add":    tAdd,
 		"xrange": tRange,
@@ -755,9 +756,11 @@ func main() {
 	e.Renderer = &Renderer{
 		templates: template.Must(template.New("").Funcs(funcs).ParseGlob("views/*.html")),
 	}
+	file, _ := os.Create("access_log_ltsv")
 	e.Use(session.Middleware(sessions.NewCookieStore([]byte("secretonymoris"))))
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "request:\"${method} ${uri}\" status:${status} latency:${latency} (${latency_human}) bytes:${bytes_out}\n",
+		Format: "request:\"${method} ${uri}\"\tstatus:${status}\tlatency:${latency} (${latency_human})\tbytes:${bytes_out}\n",
+		Output: file,
 	}))
 	e.Use(middleware.Static("../public"))
 
