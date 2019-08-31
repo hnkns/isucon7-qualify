@@ -761,6 +761,25 @@ func tRange(a, b int64) []int64 {
 	return r
 }
 
+func getTest(c echo.Context) error {
+	file, err := os.Open("~/a.png")
+	if err != nil {
+		return nil
+	}
+	defer file.Close()
+	buf := make([]byte, 1024)
+	for {
+		n, err := file.Read(buf)
+		if n == 0 {
+			break
+		}
+		if err != nil {
+			return nil
+		}
+	}
+	return c.Blob(http.StatusOK, "image/png", buf)
+}
+
 func main() {
 	e := echo.New()
 	funcs := template.FuncMap{
