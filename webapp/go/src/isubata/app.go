@@ -94,22 +94,6 @@ type User struct {
 	CreatedAt   time.Time `json:"-" db:"created_at"`
 }
 
-/**
-func getUser(userID int64) (*User, error) {
-
-	u := User{}
-
-	if err := db.Get(&u, "SELECT * FROM user WHERE id = ?", userID); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	return &u, nil
-}
- */
-
 func getUser(userID int64) (*User, error) {
 	u := User{}
 	if err := db.Get(&u, "SELECT * FROM user WHERE id = ?", userID); err != nil {
@@ -128,6 +112,7 @@ func addMessage(channelID, userID int64, content string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	redisDel("Messages", strconv.FormatInt(channelID, 10)+"*")
 	return res.LastInsertId()
 }
 
@@ -141,9 +126,14 @@ type Message struct {
 
 func queryMessages(chanID, lastID int64) ([]Message, error) {
 	msgs := []Message{}
-	err := db.Select(&msgs, "SELECT * FROM message WHERE id > ? AND channel_id = ? ORDER BY id DESC LIMIT 100",
-		lastID, chanID)
-	return msgs, err
+	if redisGet("Messages", strconv.FormatInt(chanID, 10)+"_l"+strconv.FormatInt(lastID, 10), &msgs) == false {
+		err := db.Select(&msgs, "SELECT * FROM message WHERE id > ? AND channel_id = ? ORDER BY id DESC LIMIT 100",
+			lastID, chanID)
+		redisSet("Messages", strconv.FormatInt(chanID, 10)+"_l"+strconv.FormatInt(lastID, 10), &msgs)
+		return msgs, err
+	} else {
+		return msgs, nil
+	}
 }
 
 func sessUserID(c echo.Context) int64 {
@@ -548,11 +538,14 @@ func getHistory(c echo.Context) error {
 	}
 
 	messages := []Message{}
-	err = db.Select(&messages,
-		"SELECT * FROM message WHERE channel_id = ? ORDER BY id DESC LIMIT ? OFFSET ?",
-		chID, N, (page-1)*N)
-	if err != nil {
-		return err
+	if redisGet("Messages", strconv.FormatInt(chID, 10)+"_p"+strconv.FormatInt(page, 10), &messages) == false {
+		err = db.Select(&messages,
+			"SELECT * FROM message WHERE channel_id = ? ORDER BY id DESC LIMIT ? OFFSET ?",
+			chID, N, (page-1)*N)
+		if err != nil {
+			return err
+		}
+		redisSet("Messages", strconv.FormatInt(chID, 10)+"_p"+strconv.FormatInt(page, 10), &messages)
 	}
 
 	mjson := make([]map[string]interface{}, 0)
@@ -590,7 +583,7 @@ func getProfile(c echo.Context) error {
 	}
 
 	channels := []ChannelInfo{}
-	if redisGet("Channels", "0", &channels) {
+	if redisGet("Channels", "0", &channels) == false {
 		err = db.Select(&channels, "SELECT * FROM channel ORDER BY id")
 		if err != nil {
 			return err
@@ -624,7 +617,7 @@ func getAddChannel(c echo.Context) error {
 	}
 
 	channels := []ChannelInfo{}
-	if redisGet("Channels", "0", &channels) {
+	if redisGet("Channels", "0", &channels) == false {
 		err = db.Select(&channels, "SELECT * FROM channel ORDER BY id")
 		if err != nil {
 			return err
