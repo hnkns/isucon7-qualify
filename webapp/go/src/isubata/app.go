@@ -17,7 +17,6 @@ import (
 	"strings"
 	"time"
 
-	//"github.com/go-redis/redis"
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/sessions"
 	"github.com/jmoiron/sqlx"
@@ -32,7 +31,6 @@ const (
 
 var (
 	db            *sqlx.DB
-	//client        *redis.Client
 	ErrBadReqeust = echo.NewHTTPError(http.StatusBadRequest)
 )
 
@@ -84,24 +82,6 @@ func init() {
 	db.SetConnMaxLifetime(5 * time.Minute)
 	log.Printf("Succeeded to connect db.")
 
-	////Redisの環境設定
-	//redis_host := os.Getenv("ISUBATA_REDIS_HOST")
-	//if redis_host == "" {
-	//	db_host = "127.0.0.1"
-	//}
-	//redis_port := os.Getenv("ISUBATA_REDIS_PORT")
-	//if redis_host == "" {
-	//	db_host = "6379"
-	//}
-
-	// redis_addr = fmt.Sprintf("%s:%s", redis_host, redis_port)
-	// client = redis.NewClient(&redis.Options{
-	// 	Addr:     redis_addr,
-	// 	Password: "", // no password set
-	// 	DB:       0,  // use default DB
-	// })
-	// log.Printf("Redis client:", client)
-
 }
 
 type User struct {
@@ -116,19 +96,14 @@ type User struct {
 
 /**
 func getUser(userID int64) (*User, error) {
-	u := User{}
-	// val = redisGet(client, "User", userID)
-	// &u, ok = val.(*User)
-	val := nil
 
-	if val == nil || ok == false {
-		if err := db.Get(&u, "SELECT * FROM user WHERE id = ?", userID); err != nil {
-			if err == sql.ErrNoRows {
-				return nil, nil
-			}
-			return nil, err
+	u := User{}
+
+	if err := db.Get(&u, "SELECT * FROM user WHERE id = ?", userID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
 		}
-		//redisSet(client, "User", userID, &u)
+		return nil, err
 	}
 
 	return &u, nil
@@ -250,6 +225,9 @@ func getInitialize(c echo.Context) error {
 	db.MustExec("DELETE FROM channel WHERE id > 10")
 	db.MustExec("DELETE FROM message WHERE id > 10000")
 	db.MustExec("DELETE FROM haveread")
+<<<<<<< HEAD
+	redisFLUSHALL()
+=======
 
 	// index
 	db.MustExec("CREATE INDEX user_index ON user(id, name))")
@@ -258,6 +236,7 @@ func getInitialize(c echo.Context) error {
 	db.MustExec("CREATE INDEX message_index ON image(channel_id))")
 	db.MustExec("CREATE INDEX haveread_index ON image(user_id, channel_id))")
 
+>>>>>>> master
 	return c.String(204, "")
 }
 
@@ -273,11 +252,11 @@ func getIndex(c echo.Context) error {
 }
 
 type ChannelInfo struct {
-	ID          int64     `db:"id"`
-	Name        string    `db:"name"`
-	Description string    `db:"description"`
-	UpdatedAt   time.Time `db:"updated_at"`
-	CreatedAt   time.Time `db:"created_at"`
+	ID          int64     `json:"id" db:"id"`
+	Name        string    `json:"name" db:"name"`
+	Description string    `json:"description" db:"description"`
+	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 }
 
 func getChannel(c echo.Context) error {
@@ -290,9 +269,13 @@ func getChannel(c echo.Context) error {
 		return err
 	}
 	channels := []ChannelInfo{}
-	err = db.Select(&channels, "SELECT * FROM channel ORDER BY id")
-	if err != nil {
-		return err
+
+	if redisGet("Channels", "0", &channels) == false {
+		err = db.Select(&channels, "SELECT * FROM channel ORDER BY id")
+		if err != nil {
+			return err
+		}
+		redisSet("Channels", "0", &channels)
 	}
 
 	var desc string
@@ -583,9 +566,12 @@ func getHistory(c echo.Context) error {
 	}
 
 	channels := []ChannelInfo{}
-	err = db.Select(&channels, "SELECT * FROM channel ORDER BY id")
-	if err != nil {
-		return err
+	if redisGet("Channels", "0", &channels) == false {
+		err = db.Select(&channels, "SELECT * FROM channel ORDER BY id")
+		if err != nil {
+			return err
+		}
+		redisSet("Channels", "0", &channels)
 	}
 
 	return c.Render(http.StatusOK, "history", map[string]interface{}{
@@ -605,9 +591,12 @@ func getProfile(c echo.Context) error {
 	}
 
 	channels := []ChannelInfo{}
-	err = db.Select(&channels, "SELECT * FROM channel ORDER BY id")
-	if err != nil {
-		return err
+	if redisGet("Channels", "0", &channels) {
+		err = db.Select(&channels, "SELECT * FROM channel ORDER BY id")
+		if err != nil {
+			return err
+		}
+		redisSet("Channels", "0", &channels)
 	}
 
 	userName := c.Param("user_name")
@@ -636,9 +625,12 @@ func getAddChannel(c echo.Context) error {
 	}
 
 	channels := []ChannelInfo{}
-	err = db.Select(&channels, "SELECT * FROM channel ORDER BY id")
-	if err != nil {
-		return err
+	if redisGet("Channels", "0", &channels) {
+		err = db.Select(&channels, "SELECT * FROM channel ORDER BY id")
+		if err != nil {
+			return err
+		}
+		redisSet("Channels", "0", &channels)
 	}
 
 	return c.Render(http.StatusOK, "add_channel", map[string]interface{}{
@@ -666,6 +658,8 @@ func postAddChannel(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+	redisDel("Channels", "0")
+
 	lastID, _ := res.LastInsertId()
 	return c.Redirect(http.StatusSeeOther,
 		fmt.Sprintf("/channel/%v", lastID))
@@ -769,24 +763,6 @@ func tRange(a, b int64) []int64 {
 	}
 	return r
 }
-
-// func redisSet(client *redis.Client, tag string, id string, object interface{}) {
-// 	key := fmt.Sprintf("%s:%s", tag, id)
-// 	err := client.Set(key, object, time.Hour).Err()
-// 	if err != nil {
-// 		log.Printf("redis.Client.Set Error:", err)
-// 	}
-// }
-
-// func redisGet(client *redis.Client, tag string, id string) interface{} {
-// 	key := fmt.Sprintf("%s:%s", tag, id)
-// 	val, err := client.Get(key).Result()
-// 	if err != nil {
-// 		log.Printf("redis.Client.Get Error:", err)
-// 		return nil
-// 	}
-// 	return val
-// }
 
 func main() {
 	e := echo.New()
