@@ -8,3 +8,7 @@ bench/isucon7q-initial-dataset.sql.gz
 bench/result.json
 webapp/perl/local
 result/
+*.jpg
+*.jpeg
+*.png
+*.gif
