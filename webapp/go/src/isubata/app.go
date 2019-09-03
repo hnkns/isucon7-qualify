@@ -112,7 +112,7 @@ func addMessage(channelID, userID int64, content string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	redisDel("Messages", strconv.FormatInt(channelID, 10)+"*")
+	redisKeysDel("Messages", strconv.FormatInt(channelID, 10))
 	return res.LastInsertId()
 }
 
@@ -697,8 +697,6 @@ func postProfile(c echo.Context) error {
 		avatarName = fmt.Sprintf("%x%s", sha1.Sum(avatarData), ext)
 	}
 
-
-
 	if avatarName != "" && len(avatarData) > 0 {
 		_, err := db.Exec("INSERT INTO image (name) VALUES (?)", avatarName)
 		outputImage(avatarName, avatarData)
@@ -723,7 +721,7 @@ func postProfile(c echo.Context) error {
 
 func getIcon(c echo.Context) error {
 
-	name := c.Param("filename")
+	name := c.Param("file_name")
 	data := getImageBlob(name)
 	mime := ""
 	switch true {
@@ -777,6 +775,7 @@ func outputImage(name string, data []byte) {
 
 func main() {
 	e := echo.New()
+	e.HideBanner = true
 	funcs := template.FuncMap{
 		"add":    tAdd,
 		"xrange": tRange,
@@ -784,9 +783,11 @@ func main() {
 	e.Renderer = &Renderer{
 		templates: template.Must(template.New("").Funcs(funcs).ParseGlob("views/*.html")),
 	}
+	file, _ := os.Create("access_log_ltsv")
 	e.Use(session.Middleware(sessions.NewCookieStore([]byte("secretonymoris"))))
 	e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
-		Format: "request:\"${method} ${uri}\" status:${status} latency:${latency} (${latency_human}) bytes:${bytes_out}\n",
+		Format: "request:\"${method} ${uri}\"\tstatus:${status}\tlatency:${latency} (${latency_human})\tbytes:${bytes_out}\n",
+		Output: file,
 	}))
 	e.Use(middleware.Static("../public"))
 
