@@ -116,12 +116,12 @@ func redisKeysDel(tag string, search_id string) bool {
 	s_cnt := 0
 	e_cnt := 0
 
-	for key := range keys {
+	for index, key := range keys {
 		if _, err := c.Do("DEL", key); err != nil {
 			log.Printf("redisKeysDel:DELError :", err)
 			e_cnt++
 		} else {
-			log.Printf("redisKeysDel:Success!! (%s)", key)
+			log.Printf("redisKeysDel:Success!! [%d](%s)", index, key)
 			s_cnt++
 		}
 	}
