@@ -95,6 +95,47 @@ func redisDel(tag string, id string) bool {
 	}
 }
 
+//redisの汎用関数Delete(複数キー)
+func redisKeysDel(tag string, search_id string) bool {
+
+	c, err := redis.Dial("tcp", ":6379")
+	if err != nil {
+		log.Fatal(err)
+		return false
+	}
+	defer c.Close()
+
+	query := fmt.Sprintf("%s:%s*", tag, search_id)
+
+	keys, err := redis.Strings(c.Do("KEYS", query))
+	if err != nil {
+		log.Printf("redisKeysDel:KEYSError :", err)
+		return false
+	}
+
+	s_cnt := 0
+	e_cnt := 0
+
+	for key := range keys {
+		if _, err := c.Do("DEL", key); err != nil {
+			log.Printf("redisKeysDel:DELError :", err)
+			e_cnt++
+		} else {
+			log.Printf("redisKeysDel:Success!! (%s)", key)
+			s_cnt++
+		}
+	}
+
+	if e_cnt > 0 {
+		log.Printf("redisKeysDel:Error(%d),Sucess(%d):", e_cnt, s_cnt)
+		return false
+	} else {
+		log.Printf("redisKeysDel:AllSuccess!!")
+		return true
+	}
+
+}
+
 //redisの汎用関数FLUSHALL
 func redisFLUSHALL() bool {
 

@@ -112,7 +112,7 @@ func addMessage(channelID, userID int64, content string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	redisDel("Messages", strconv.FormatInt(channelID, 10)+"*")
+	redisKeysDel("Messages", strconv.FormatInt(channelID, 10))
 	return res.LastInsertId()
 }
 
