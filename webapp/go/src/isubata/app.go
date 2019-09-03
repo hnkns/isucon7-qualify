@@ -697,8 +697,6 @@ func postProfile(c echo.Context) error {
 		avatarName = fmt.Sprintf("%x%s", sha1.Sum(avatarData), ext)
 	}
 
-
-
 	if avatarName != "" && len(avatarData) > 0 {
 		_, err := db.Exec("INSERT INTO image (name) VALUES (?)", avatarName)
 		outputImage(avatarName, avatarData)
@@ -723,7 +721,7 @@ func postProfile(c echo.Context) error {
 
 func getIcon(c echo.Context) error {
 
-	name := c.Param("filename")
+	name := c.Param("file_name")
 	data := getImageBlob(name)
 	mime := ""
 	switch true {
